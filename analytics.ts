@@ -1,10 +1,11 @@
 import http from "node:http"
 import fs from "fs"
 import { getFips } from "node:crypto"
-import { createFileLevelUniqueName, nodeModuleNameResolver } from "typescript"
+import { createFileLevelUniqueName, nodeModuleNameResolver, walkUpBindingElementsAndPatterns } from "typescript"
 import { access } from "node:fs"
+import { rootCertificates } from "node:tls"
 
-type ActivityName = 'IB' | 'MSG' | 'BTDY' | 'NSN'
+type ActivityName = string
 type ActionName = 'MSG.compose' | 'IB.reply' | 'IB.fwd'
 type InteractionName = ActivityName | ActionName
 
@@ -58,6 +59,10 @@ const pickRandomActivity = (): Activity | undefined => {
     const now = new Date()
     if (Math.random() > 0.8) return new Activity("BTDY", now, now)
     if (Math.random() > 0.8) return new Activity("IB", now, now)
+    if (Math.random() > 0.8) return new Activity("NSN", now, now)
+    if (Math.random() > 0.8) return new Activity("HOME", now, now)
+    if (Math.random() > 0.8) return new Activity("DES", now, now)
+    if (Math.random() > 0.8) return new Activity("TOP", now, now)
     if (Math.random() > 0.8) return new Activity("MSG", now, now)
     return undefined
 }
@@ -72,7 +77,7 @@ const randomData = (quantity: number): Session[] => {
         const end = new Date()
         const session = new Session(user, device, start, end)
         let lastEvent: ActivityOrAction | undefined = undefined
-        for (let t = 0; t < 10; t++) {
+        for (let t = 0; t < 12; t++) {
             const event: ActivityOrAction | undefined = pickRandomActivity()
             if (event && (!lastEvent || event.name != lastEvent.name)) {
                 session.eventTimeline.push(event)
@@ -142,10 +147,11 @@ const server = http.createServer((req, res) => {
     res.statusCode = 200
     console.log(req.method, req.url)
     if (req.url?.startsWith("/")) {
-        // const sessions = randomData(100)
-        // const data = reduceSessions(sessions)
+        const sessions = randomData(1000)
+        const data = reduceSessions(sessions)
         // const html = renderHTML(data)
-        const html = dumpDiagram(fakeDiagram())
+        // const html = renderDiagram(fakeDiagram())
+        const html = renderDiagram(createDiagram(data))
         res.setHeader("Content-Type", "text/html")
         res.end(html)
 
@@ -169,6 +175,59 @@ class Stage {
 }
 class Diagram {
     public stages: Stage[] = []
+}
+
+const createDiagram = (roots:AggregateActiviyOrAction[]): Diagram => {
+
+    let diagram = new Diagram()
+
+    // find number of stages and set of activities
+    let maxDepth=0
+    let activities = new Set<string>()
+    const walk = (node:AggregateActiviyOrAction, depth:number) => {
+        maxDepth = Math.max(maxDepth, depth)
+        activities.add(node.interaction)
+        node.next.forEach(child => {
+            walk(child, depth+1)
+        })
+    }
+    roots.forEach(element => {
+        walk(element,0)
+    })
+
+    console.log(`Found ${activities.size} activities in ${maxDepth} stages`)
+
+    for ( let stage = 0; stage<=maxDepth; stage++) {
+        let stage = new Stage()
+        diagram.stages.push(stage)
+        activities.forEach(activity => {
+            let node = new SankeyNode()
+            stage.nodes.push(node)
+            node.count=0
+            node.name = activity
+        })
+    }
+
+    const walkAggregate = (activity:AggregateActiviyOrAction, depth:number) => {
+        const nodeIx = diagram.stages[depth].nodes.findIndex(node => node.name == activity.interaction)
+        const node = diagram.stages[depth].nodes[nodeIx]
+        node.count += activity.count
+        
+        activity.next.forEach(childActivity => {
+            const previousCount = node.next.get(childActivity.interaction)
+            const newCount = (previousCount||0)+childActivity.count
+            node.next.set(childActivity.interaction, newCount)
+
+            walkAggregate(childActivity, depth+1)
+        })
+    }
+    roots.forEach(root => {
+        walkAggregate(root,0)
+    })
+    for ( let stage = 0; stage<diagram.stages.length; stage++) {
+        diagram.stages[stage].nodes = diagram.stages[stage].nodes.sort((a,b)=> b.count-a.count)
+    }
+    return diagram
 }
 
 const fakeDiagram = (): Diagram => {
@@ -196,9 +255,9 @@ const fakeDiagram = (): Diagram => {
     return diagram
 }
 
-const dumpDiagram = (diagram: Diagram) => {
+const renderDiagram = (diagram: Diagram) => {
     let yorigin = 500
-    const imageWidth = 1800, imageHeight = 900
+    const imageWidth = 3800, imageHeight = 2500
     let html = `<svg width="${imageWidth}" height="${imageHeight}">`
 
     let positions:{x:number, y:number}[][] = []
@@ -240,7 +299,7 @@ const dumpDiagram = (diagram: Diagram) => {
             let dy=-10
             node.next.forEach((value, key) => {
                 html += `<text x="${x+40}" y="${y+dy}" fill="red">${key}</text>\n`
-                html += `<text x="${x+80}" y="${y+dy}" fill="red">${value}</text>\n`
+                html += `<text x="${x+90}" y="${y+dy}" fill="red">${value}</text>\n`
                 // draw connection
                 if (stageIx<diagram.stages.length-1) {
                     const nextNodeIx = diagram.stages[stageIx+1].nodes.findIndex(node => node.name==key)
