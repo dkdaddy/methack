@@ -1,9 +1,5 @@
 import http from "node:http"
 import fs from "fs"
-import { getFips } from "node:crypto"
-import { createFileLevelUniqueName, nodeModuleNameResolver, walkUpBindingElementsAndPatterns } from "typescript"
-import { access } from "node:fs"
-import { rootCertificates } from "node:tls"
 
 type ActivityName = string
 type ActionName = 'MSG.compose' | 'IB.reply' | 'IB.fwd'
@@ -89,7 +85,21 @@ const randomData = (quantity: number): Session[] => {
     return result
 
 }
-
+const loadData = ():Session[] => {
+    const data = fs.readFileSync("final_output.json")
+    const sessions = JSON.parse(String(data))
+    console.log(`Loaded ${sessions.length} sessions`)
+    const mappedSessions = sessions.map((obj: { activities: { name: string }[] }) => {
+        const session = new Session("bob", "1234", new Date(), new Date())
+        obj.activities.forEach((activity: { name: string }) => {
+            const mappedActivity = new Activity(activity.name, new Date(), new Date())
+            session.eventTimeline.push(mappedActivity)
+        })
+        return session
+    })
+    const temp =  mappedSessions.slice(0,10000)
+    return temp
+}
 const reduceSessions = (sessions: Session[]): AggregateActiviyOrAction[] => {
     let root: AggregateActiviyOrAction = new AggregateActiviyOrAction('NSN', 0, []) // not real, name does not matter
 
@@ -147,7 +157,8 @@ const server = http.createServer((req, res) => {
     res.statusCode = 200
     console.log(req.method, req.url)
     if (req.url?.startsWith("/")) {
-        const sessions = randomData(1000)
+        // const sessions = randomData(1000)
+        const sessions = loadData()
         const data = reduceSessions(sessions)
         // const html = renderHTML(data)
         // const html = renderDiagram(fakeDiagram())

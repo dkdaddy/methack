@@ -13,6 +13,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const node_http_1 = __importDefault(require("node:http"));
+const fs_1 = __importDefault(require("fs"));
 class Activity {
     constructor(name, startTime, endTime) {
         this.name = name;
@@ -80,6 +81,21 @@ const randomData = (quantity) => {
     }
     return result;
 };
+const loadData = () => {
+    const data = fs_1.default.readFileSync("final_output.json");
+    const sessions = JSON.parse(String(data));
+    console.log(`Loaded ${sessions.length} sessions`);
+    const mappedSessions = sessions.map((obj) => {
+        const session = new Session("bob", "1234", new Date(), new Date());
+        obj.activities.forEach((activity) => {
+            const mappedActivity = new Activity(activity.name, new Date(), new Date());
+            session.eventTimeline.push(mappedActivity);
+        });
+        return session;
+    });
+    const temp = mappedSessions.slice(0, 10000);
+    return temp;
+};
 const reduceSessions = (sessions) => {
     let root = new AggregateActiviyOrAction('NSN', 0, []); // not real, name does not matter
     sessions.forEach(session => {
@@ -135,7 +151,8 @@ const server = node_http_1.default.createServer((req, res) => {
     res.statusCode = 200;
     console.log(req.method, req.url);
     if ((_a = req.url) === null || _a === void 0 ? void 0 : _a.startsWith("/")) {
-        const sessions = randomData(1000);
+        // const sessions = randomData(1000)
+        const sessions = loadData();
         const data = reduceSessions(sessions);
         // const html = renderHTML(data)
         // const html = renderDiagram(fakeDiagram())
