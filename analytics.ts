@@ -1,7 +1,7 @@
 import http from "node:http"
 import fs from "fs"
 import { getFips } from "node:crypto"
-import { nodeModuleNameResolver } from "typescript"
+import { createFileLevelUniqueName, nodeModuleNameResolver } from "typescript"
 import { access } from "node:fs"
 
 type ActivityName = 'IB' | 'MSG' | 'BTDY' | 'NSN'
@@ -201,8 +201,25 @@ const dumpDiagram = (diagram: Diagram) => {
     const imageWidth = 1800, imageHeight = 900
     let html = `<svg width="${imageWidth}" height="${imageHeight}">`
 
+    let positions:{x:number, y:number}[][] = []
+
+    // before we start rendering we need to compute position of each node to draw the connections
     diagram.stages.forEach((stage, stageIx) => {
-        const x = 40+ 240 * stageIx
+        const x = 40+ 260 * stageIx
+        positions.push([])
+        stage.nodes.forEach((node, nodeIx) => {
+            const y = 120 * nodeIx + 120
+            positions[stageIx][nodeIx] = {x:x, y:y}
+        })
+    })
+
+    positions.forEach(col =>  {
+        col.forEach(cell => {
+            html += `<rect x="${cell.x-5}" y="${cell.y}" width="5" height="5" fill="blue"></rect>`
+        })
+    })
+    diagram.stages.forEach((stage, stageIx) => {
+        const x = 40+ 260 * stageIx
 
         // the top level stats
         const sessions = stage.nodes.reduce((p,c) => p += c.count,0)
@@ -223,7 +240,14 @@ const dumpDiagram = (diagram: Diagram) => {
             let dy=-10
             node.next.forEach((value, key) => {
                 html += `<text x="${x+40}" y="${y+dy}" fill="red">${key}</text>\n`
-                html += `<text x="${x+50+70}" y="${y+dy}" fill="red">${value}</text>\n`
+                html += `<text x="${x+80}" y="${y+dy}" fill="red">${value}</text>\n`
+                // draw connection
+                if (stageIx<diagram.stages.length-1) {
+                    const nextNodeIx = diagram.stages[stageIx+1].nodes.findIndex(node => node.name==key)
+                    const next = positions[stageIx+1][nextNodeIx]
+                    const width = 1 + value/100
+                    html += `<line x1="${x+120}" y1="${y+dy}" x2="${ (next.x - 5 )}" y2="${next.y}" style="stroke:lightgray;stroke-width:${width}" />`
+                }
                 dy +=18
             })
         })
