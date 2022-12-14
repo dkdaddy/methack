@@ -127,9 +127,10 @@ const server = node_http_1.default.createServer((req, res) => {
     res.statusCode = 200;
     console.log(req.method, req.url);
     if ((_a = req.url) === null || _a === void 0 ? void 0 : _a.startsWith("/")) {
-        const sessions = randomData(100);
-        const data = reduceSessions(sessions);
-        const html = renderHTML(data);
+        // const sessions = randomData(100)
+        // const data = reduceSessions(sessions)
+        // const html = renderHTML(data)
+        const html = dumpDiagram(fakeDiagram());
         res.setHeader("Content-Type", "text/html");
         res.end(html);
     }
@@ -142,3 +143,74 @@ const server = node_http_1.default.createServer((req, res) => {
 server.listen(port, hostname, () => __awaiter(void 0, void 0, void 0, function* () {
     console.log(`Server running at http://${hostname}:${port}/`);
 }));
+class SankeyNode {
+    constructor() {
+        this.name = "";
+        this.count = 0;
+        this.next = new Map();
+    }
+}
+class Stage {
+    constructor() {
+        this.nodes = [];
+    }
+}
+class Diagram {
+    constructor() {
+        this.stages = [];
+    }
+}
+const fakeDiagram = () => {
+    let diagram = new Diagram();
+    const activities = ['IB', 'MSG', 'NSN', 'BDTY', 'TOP'];
+    const stages = [1, 2, 3, 4, 5];
+    stages.forEach(stageix => {
+        const stage = new Stage();
+        activities.forEach(activity => {
+            const node = new SankeyNode();
+            node.name = activity;
+            node.count = Math.round(Math.random() * 10000);
+            activities.forEach(child => {
+                if (child != node.name && Math.random() > .7) {
+                    node.next.set(child, Math.round(Math.random() * 1000));
+                }
+            });
+            stage.nodes.push(node);
+        });
+        stage.nodes = stage.nodes.sort((a, b) => a.count - b.count);
+        diagram.stages.push(stage);
+    });
+    return diagram;
+};
+const dumpDiagram = (diagram) => {
+    let yorigin = 500;
+    const imageWidth = 1800, imageHeight = 900;
+    let html = `<svg width="${imageWidth}" height="${imageHeight}">`;
+    diagram.stages.forEach((stage, stageIx) => {
+        const x = 40 + 240 * stageIx;
+        // the top level stats
+        const sessions = stage.nodes.reduce((p, c) => p += c.count, 0);
+        let linkCount = 0;
+        stage.nodes.forEach(node => {
+            node.next.forEach(link => {
+                linkCount += link;
+            });
+        });
+        const dropOuts = sessions - linkCount;
+        html += `<text x="${x}" y="${20}" fill="black">${sessions} sessions</text>\n`;
+        html += `<text x="${x}" y="${40}" fill="black">${dropOuts} drop-outs</text>\n`;
+        stage.nodes.forEach((node, nodeIx) => {
+            const y = 120 * nodeIx + 120;
+            html += `<text x="${x}" y="${y}" fill="black">${node.name}</text>\n`;
+            html += `<text x="${x}" y="${y + 20}" fill="black">${node.count}</text>\n`;
+            let dy = -10;
+            node.next.forEach((value, key) => {
+                html += `<text x="${x + 40}" y="${y + dy}" fill="red">${key}</text>\n`;
+                html += `<text x="${x + 50 + 70}" y="${y + dy}" fill="red">${value}</text>\n`;
+                dy += 18;
+            });
+        });
+    });
+    html += '</svg>';
+    return html;
+};
