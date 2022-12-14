@@ -35,6 +35,13 @@ class Session {
         this.eventTimeline = [];
     }
 }
+class AggregateActiviyOrAction {
+    constructor(interation, count, next = []) {
+        this.interaction = interation;
+        this.count = count;
+        this.next = next;
+    }
+}
 const pickRandomActivity = () => {
     const now = new Date();
     if (Math.random() > 0.8)
@@ -84,13 +91,6 @@ const reduceSessions = (sessions) => {
     result.sort((a, b) => a.count - b.count); // descending size 
     return result;
 };
-class AggregateActiviyOrAction {
-    constructor(interation, count, next = []) {
-        this.interaction = interation;
-        this.count = count;
-        this.next = next;
-    }
-}
 const renderHTML = (roots) => {
     let html = "";
     const sessions = roots.reduce((prev, curr) => { return prev + curr.count; }, 0);
@@ -113,17 +113,6 @@ const renderActivity = (activity, level) => {
     html += "</div>";
     return html;
 };
-const getFakeData = () => {
-    const fwd = new AggregateActiviyOrAction("IB.fwd", 23211);
-    const reply = new AggregateActiviyOrAction("IB.reply", 2011);
-    const nsn = new AggregateActiviyOrAction("NSN", 18277);
-    const msgCompose = new AggregateActiviyOrAction("MSG.compose", 8772);
-    return [
-        new AggregateActiviyOrAction("IB", 27232, [fwd, reply]),
-        new AggregateActiviyOrAction("MSG", 42227, [msgCompose]),
-        new AggregateActiviyOrAction("BTDY", 19327, [nsn]),
-    ];
-};
 const hostname = ""; //os.hostname();
 const port = 8000;
 const getMIMEType = (ext) => {
@@ -138,7 +127,6 @@ const server = node_http_1.default.createServer((req, res) => {
     res.statusCode = 200;
     console.log(req.method, req.url);
     if ((_a = req.url) === null || _a === void 0 ? void 0 : _a.startsWith("/")) {
-        // const data = getFakeData()
         const sessions = randomData(100);
         const data = reduceSessions(sessions);
         const html = renderHTML(data);

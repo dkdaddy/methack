@@ -42,6 +42,17 @@ class Session {
     public user:string
     public eventTimeline: ActivityOrAction[] // time ordered
 }
+class AggregateActiviyOrAction {
+    constructor(interation:InteractionName, count:number, next:AggregateActiviyOrAction[]=[]) {
+        this.interaction = interation
+        this.count = count
+        this.next = next
+    }
+    public count:number
+    public interaction:InteractionName
+    public next:AggregateActiviyOrAction[]
+}
+
 const pickRandomActivity = ():Activity|undefined => {
     const now = new Date()
     if (Math.random()>0.8) return new Activity("BTDY", now, now)
@@ -93,17 +104,6 @@ const reduceSessions = (sessions:Session[]):AggregateActiviyOrAction[] => {
     result.sort((a,b) => a.count-b.count) // descending size 
     return result
 }
-class AggregateActiviyOrAction {
-    constructor(interation:InteractionName, count:number, next:AggregateActiviyOrAction[]=[]) {
-        this.interaction = interation
-        this.count = count
-        this.next = next
-    }
-    public count:number
-    public interaction:InteractionName
-    public next:AggregateActiviyOrAction[]
-}
-
 const renderHTML = (roots:AggregateActiviyOrAction[]):string => {
     let html = ""
     const sessions = roots.reduce((prev, curr) => {return prev+curr.count}, 0)
@@ -128,18 +128,6 @@ const renderActivity = (activity:AggregateActiviyOrAction, level:number):string 
     return html
 }
 
-const getFakeData = () => {
-    const fwd = new AggregateActiviyOrAction("IB.fwd", 23211)
-    const reply = new AggregateActiviyOrAction("IB.reply", 2011)
-    const nsn = new AggregateActiviyOrAction("NSN", 18277)
-    const msgCompose = new AggregateActiviyOrAction("MSG.compose", 8772)
-    return [
-        new AggregateActiviyOrAction("IB", 27232,[fwd, reply]),
-        new AggregateActiviyOrAction("MSG", 42227,[msgCompose]),
-        new AggregateActiviyOrAction("BTDY", 19327, [nsn]),
-    ]
-    
-}
 const hostname = "" //os.hostname();
 const port = 8000
 
@@ -153,7 +141,6 @@ const server = http.createServer((req, res) => {
     res.statusCode = 200
     console.log(req.method, req.url)
     if (req.url?.startsWith("/")) {
-        // const data = getFakeData()
         const sessions = randomData(100)
         const data = reduceSessions(sessions)
         const html = renderHTML(data)
