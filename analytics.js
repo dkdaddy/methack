@@ -35,25 +35,74 @@ class Session {
         this.eventTimeline = [];
     }
 }
+const pickRandomActivity = () => {
+    const now = new Date();
+    if (Math.random() > 0.8)
+        return new Activity("BTDY", now, now);
+    if (Math.random() > 0.8)
+        return new Activity("IB", now, now);
+    if (Math.random() > 0.8)
+        return new Activity("MSG", now, now);
+    return undefined;
+};
+const randomData = (quantity) => {
+    let result = [];
+    for (let n = 0; n < quantity; n++) {
+        const user = "bob";
+        const device = "X-1234";
+        const start = new Date();
+        const end = new Date();
+        const session = new Session(user, device, start, end);
+        let lastEvent = undefined;
+        for (let t = 0; t < 10; t++) {
+            const event = pickRandomActivity();
+            if (event && (!lastEvent || event.name != lastEvent.name)) {
+                session.eventTimeline.push(event);
+                lastEvent = event;
+            }
+        }
+        result.push(session);
+    }
+    return result;
+};
+const reduceSessions = (sessions) => {
+    let root = new AggregateActiviyOrAction('NSN', 0, []); // not real, name does not matter
+    sessions.forEach(session => {
+        let currentNode = root;
+        session.eventTimeline.forEach(event => {
+            // place this event in this level and move to next level
+            let item = currentNode.next.find((node) => node.interaction == event.name);
+            if (!item) {
+                item = new AggregateActiviyOrAction(event.name, 0, []);
+                currentNode.next.push(item);
+            }
+            item.count++;
+            currentNode = item;
+        });
+    });
+    let result = root.next;
+    result.sort((a, b) => a.count - b.count); // descending size 
+    return result;
+};
 class AggregateActiviyOrAction {
-    constructor(interation, count) {
+    constructor(interation, count, next = []) {
         this.interaction = interation;
         this.count = count;
-        this.next = [];
+        this.next = next;
     }
 }
 const renderHTML = (roots) => {
     let html = "";
     const sessions = roots.reduce((prev, curr) => { return prev + curr.count; }, 0);
     const dropOuts = sessions - roots.reduce((prev, curr) => { return prev + curr.next.reduce((p, c) => p + c.count, 0); }, 0);
-    html += `Sessions ${sessions} Drop-outs ${dropOuts}`;
+    html += `Sessions ${sessions} Drop-outs ${dropOuts}<hr><br>`;
     roots.forEach(child => {
         html += renderActivity(child, 1);
     });
     return html;
 };
 const renderActivity = (activity, level) => {
-    let html = "";
+    let html = "<div>";
     for (let n = 0; n < level; n++) {
         html += "&nbsp;&nbsp;&nbsp;&nbsp;"; // indent
     }
@@ -61,7 +110,19 @@ const renderActivity = (activity, level) => {
     activity.next.forEach(child => {
         html += renderActivity(child, level + 1);
     });
+    html += "</div>";
     return html;
+};
+const getFakeData = () => {
+    const fwd = new AggregateActiviyOrAction("IB.fwd", 23211);
+    const reply = new AggregateActiviyOrAction("IB.reply", 2011);
+    const nsn = new AggregateActiviyOrAction("NSN", 18277);
+    const msgCompose = new AggregateActiviyOrAction("MSG.compose", 8772);
+    return [
+        new AggregateActiviyOrAction("IB", 27232, [fwd, reply]),
+        new AggregateActiviyOrAction("MSG", 42227, [msgCompose]),
+        new AggregateActiviyOrAction("BTDY", 19327, [nsn]),
+    ];
 };
 const hostname = ""; //os.hostname();
 const port = 8000;
@@ -77,7 +138,11 @@ const server = node_http_1.default.createServer((req, res) => {
     res.statusCode = 200;
     console.log(req.method, req.url);
     if ((_a = req.url) === null || _a === void 0 ? void 0 : _a.startsWith("/")) {
-        const html = "hello";
+        // const data = getFakeData()
+        const sessions = randomData(100);
+        const data = reduceSessions(sessions);
+        const html = renderHTML(data);
+        res.setHeader("Content-Type", "text/html");
         res.end(html);
     }
     else {

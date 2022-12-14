@@ -49,6 +49,7 @@ const pickRandomActivity = ():Activity|undefined => {
     if (Math.random()>0.8) return new Activity("MSG", now, now)
     return undefined
 }
+
 const randomData = (quantity:number):Session[] => {
     let result:Session[] = []
 
@@ -71,6 +72,7 @@ const randomData = (quantity:number):Session[] => {
     return result
 
 }
+
 const reduceSessions = (sessions:Session[]):AggregateActiviyOrAction[] => {
     let root:AggregateActiviyOrAction = new AggregateActiviyOrAction('NSN',0,[]) // not real, name does not matter
 
@@ -101,7 +103,6 @@ class AggregateActiviyOrAction {
     public interaction:InteractionName
     public next:AggregateActiviyOrAction[]
 }
-
 
 const renderHTML = (roots:AggregateActiviyOrAction[]):string => {
     let html = ""
