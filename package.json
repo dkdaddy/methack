@@ -1,0 +1,21 @@
+{
+  "name": "methack",
+  "version": "1.0.0",
+  "description": "drawing logic based on https://digitalcommunications.wp.st-andrews.ac.uk/files/2016/10/users-flow-step1.png See also https://mixpanel.com/blog/user-flow-analysis/ (Starting=Open Message, Ending=Any Event, Users In 2 Cohorts, Time Last 30 days)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "watch": "tsc -w",
+    "run": "npx nodemon analytics.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "types": "^0.1.1",
+    "typescript": "^4.9.4"
+  },
+  "devDependencies": {
+    "@types/node": "^18.11.15"
+  }
+}
