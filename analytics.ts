@@ -97,13 +97,13 @@ const loadData = ():Session[] => {
         })
         return session
     })
-    const temp =  mappedSessions.slice(0,10000)
+    const temp =  mappedSessions//.slice(0,10000)
     return temp
 }
-const reduceSessions = (sessions: Session[]): AggregateActiviyOrAction[] => {
+const reduceSessions = (sessions: Session[], amount:number): AggregateActiviyOrAction[] => {
     let root: AggregateActiviyOrAction = new AggregateActiviyOrAction('NSN', 0, []) // not real, name does not matter
 
-    sessions.forEach(session => {
+    sessions.slice(0, amount).forEach(session => {
         let currentNode: AggregateActiviyOrAction = root
         session.eventTimeline.forEach(event => {
             // place this event in this level and move to next level
@@ -144,37 +144,6 @@ const renderActivity = (activity: AggregateActiviyOrAction, level: number): stri
     return html
 }
 
-const hostname = "" //os.hostname();
-const port = 8000
-
-const getMIMEType = (ext: string) => {
-    if (ext == "png") return "image/png"
-    if (ext == "js") return "text/javascript"
-    return "text/html"
-}
-
-const server = http.createServer((req, res) => {
-    res.statusCode = 200
-    console.log(req.method, req.url)
-    if (req.url?.startsWith("/")) {
-        // const sessions = randomData(1000)
-        const sessions = loadData()
-        const data = reduceSessions(sessions)
-        // const html = renderHTML(data)
-        // const html = renderDiagram(fakeDiagram())
-        const html = renderDiagram(createDiagram(data))
-        res.setHeader("Content-Type", "text/html")
-        res.end(html)
-
-    } else {
-        console.log(`unexpected url ${req.url}`)
-        res.setHeader("Content-Type", "text/html")
-        res.end("error")
-    }
-})
-server.listen(port, hostname, async () => {
-    console.log(`Server running at http://${hostname}:${port}/`)
-})
 
 class SankeyNode {
     public name: string = ""
@@ -325,3 +294,49 @@ const renderDiagram = (diagram: Diagram) => {
     html += '</svg>'
     return html
 }
+
+
+
+
+
+
+const hostname = "" //os.hostname();
+const port = 8000
+
+const getMIMEType = (ext: string) => {
+    if (ext == "png") return "image/png"
+    if (ext == "js") return "text/javascript"
+    return "text/html"
+}
+
+const sessions = loadData()
+
+const server = http.createServer((req, res) => {
+    res.statusCode = 200
+    console.log(req.method, req.url)
+    if (req.url?.startsWith("/analytics")) {
+        const html = String(fs.readFileSync("analytics.html"))
+        res.setHeader("Content-Type", "text/html")
+        res.end(html)
+
+    } 
+    else if (req.url?.startsWith("/chart/")) {
+        const param = req.url.split("/")[2]
+        const amount = Number.parseInt(param)
+        // const sessions = randomData(1000)
+        const data = reduceSessions(sessions, amount)
+        // const html = renderHTML(data)
+        // const html = renderDiagram(fakeDiagram())
+        const html = renderDiagram(createDiagram(data))
+        res.setHeader("Content-Type", "text/html")
+        res.end(html)
+
+    } else {
+        console.log(`unexpected url ${req.url}`)
+        res.setHeader("Content-Type", "text/html")
+        res.end("error")
+    }
+})
+server.listen(port, hostname, async () => {
+    console.log(`Server running at http://${hostname}:${port}/`)
+})

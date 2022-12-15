@@ -93,12 +93,12 @@ const loadData = () => {
         });
         return session;
     });
-    const temp = mappedSessions.slice(0, 10000);
+    const temp = mappedSessions; //.slice(0,10000)
     return temp;
 };
-const reduceSessions = (sessions) => {
+const reduceSessions = (sessions, amount) => {
     let root = new AggregateActiviyOrAction('NSN', 0, []); // not real, name does not matter
-    sessions.forEach(session => {
+    sessions.slice(0, amount).forEach(session => {
         let currentNode = root;
         session.eventTimeline.forEach(event => {
             // place this event in this level and move to next level
@@ -137,38 +137,6 @@ const renderActivity = (activity, level) => {
     html += "</div>";
     return html;
 };
-const hostname = ""; //os.hostname();
-const port = 8000;
-const getMIMEType = (ext) => {
-    if (ext == "png")
-        return "image/png";
-    if (ext == "js")
-        return "text/javascript";
-    return "text/html";
-};
-const server = node_http_1.default.createServer((req, res) => {
-    var _a;
-    res.statusCode = 200;
-    console.log(req.method, req.url);
-    if ((_a = req.url) === null || _a === void 0 ? void 0 : _a.startsWith("/")) {
-        // const sessions = randomData(1000)
-        const sessions = loadData();
-        const data = reduceSessions(sessions);
-        // const html = renderHTML(data)
-        // const html = renderDiagram(fakeDiagram())
-        const html = renderDiagram(createDiagram(data));
-        res.setHeader("Content-Type", "text/html");
-        res.end(html);
-    }
-    else {
-        console.log(`unexpected url ${req.url}`);
-        res.setHeader("Content-Type", "text/html");
-        res.end("error");
-    }
-});
-server.listen(port, hostname, () => __awaiter(void 0, void 0, void 0, function* () {
-    console.log(`Server running at http://${hostname}:${port}/`);
-}));
 class SankeyNode {
     constructor() {
         this.name = "";
@@ -307,3 +275,42 @@ const renderDiagram = (diagram) => {
     html += '</svg>';
     return html;
 };
+const hostname = ""; //os.hostname();
+const port = 8000;
+const getMIMEType = (ext) => {
+    if (ext == "png")
+        return "image/png";
+    if (ext == "js")
+        return "text/javascript";
+    return "text/html";
+};
+const sessions = loadData();
+const server = node_http_1.default.createServer((req, res) => {
+    var _a, _b;
+    res.statusCode = 200;
+    console.log(req.method, req.url);
+    if ((_a = req.url) === null || _a === void 0 ? void 0 : _a.startsWith("/analytics")) {
+        const html = String(fs_1.default.readFileSync("analytics.html"));
+        res.setHeader("Content-Type", "text/html");
+        res.end(html);
+    }
+    else if ((_b = req.url) === null || _b === void 0 ? void 0 : _b.startsWith("/chart/")) {
+        const param = req.url.split("/")[2];
+        const amount = Number.parseInt(param);
+        // const sessions = randomData(1000)
+        const data = reduceSessions(sessions, amount);
+        // const html = renderHTML(data)
+        // const html = renderDiagram(fakeDiagram())
+        const html = renderDiagram(createDiagram(data));
+        res.setHeader("Content-Type", "text/html");
+        res.end(html);
+    }
+    else {
+        console.log(`unexpected url ${req.url}`);
+        res.setHeader("Content-Type", "text/html");
+        res.end("error");
+    }
+});
+server.listen(port, hostname, () => __awaiter(void 0, void 0, void 0, function* () {
+    console.log(`Server running at http://${hostname}:${port}/`);
+}));

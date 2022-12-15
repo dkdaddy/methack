@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<meta name="color-scheme" content="dark light">
+
+<script type="text/javascript">
+    
+let loadChart = (sample) => {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+            console.log("payload returned")
+            // console.log(xhttp.responseText)
+           let html = xhttp.responseText
+            document.getElementById("chart").innerHTML = html
+        }
+    };
+    xhttp.open("GET", "/chart/"+sample, true);
+    xhttp.send();
+}
+let onLoad = () => {
+    loadChart(5000)
+}
+</script>
+<head>
+    <!-- <link rel="stylesheet" href="graph.css" /> -->
+    <!-- <script type="module" src="graph.js"></script> -->
+    <style>
+        body {
+            background-color: white;
+        }
+        button {
+            background-color: rgb(184, 184, 203);
+            color: rgb(15, 9, 88);
+        }
+    </style>
+</head>
+<body onLoad="onLoad()">
+    <div id="buttonBar">
+        <button class="button" onclick="loadChart(1)">Juat one</button>
+        <button class="button" onclick="loadChart(10)">10</button>
+        <button class="button" onclick="loadChart(100)">100</button>
+        <button class="button" onclick="loadChart(1000)">1000</button>
+        <button class="button" onclick="loadChart(10000)">10,000</button>
+        <button class="button" onclick="loadChart(100000)">100,000</button>
+    </div>
+    <br>
+    <div id="chart" style=" height:900px; width:1200ox; border:2px solid rgb(52, 26, 26)">
+
+    </div> 
+</body>
