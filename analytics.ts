@@ -322,7 +322,7 @@ const renderDiagram = (diagram: Diagram) => {
     // before we start rendering we need to compute position of each node to draw the connections
     diagram.stages.forEach((stage, stageIx) => {
         const x = 40 + xspace * stageIx
-        let y = 120 // spacing is based on box size which is proportional to count
+        let y = 80 // spacing is based on box size which is proportional to count
         positions.push([])
         stage.nodes.forEach((node, nodeIx) => {
             const height = node.count * heightFactor
@@ -355,7 +355,7 @@ const renderDiagram = (diagram: Diagram) => {
             })
         })
         const dropOuts = sessions - linkCount
-        html += `<text x="${x}" y="${20}" fill="black">${sessions} sessions</text>\n`
+        html += `<text x="${x}" y="${20}" fill="black">${sessions } sessions</text>\n`
         html += `<text x="${x}" y="${40}" fill="black">${dropOuts} drop-outs</text>\n`
 
         // stage.nodes.forEach((node, nodeIx) => {
@@ -425,7 +425,8 @@ const server = http.createServer((req, res) => {
         }
         else {
             let html = "<div>Raw Data</div><table>"
-            sessions.slice(from, from+amount).forEach((session, ix) => {
+            // limit to 400 rows
+            sessions.slice(from, from+Math.round(Math.min(amount,400))).forEach((session, ix) => {
                 html += `<tr>`
                 html += `<td>${ix}. </td>`
                 session.eventTimeline.forEach(event => {
