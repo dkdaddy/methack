@@ -100,10 +100,10 @@ const loadData = (): Session[] => {
     const temp = mappedSessions//.slice(0,10000)
     return temp
 }
-const reduceSessions = (sessions: Session[], amount: number): AggregateActiviyOrAction[] => {
+const reduceSessions = (sessions: Session[], from:number, amount: number): AggregateActiviyOrAction[] => {
     let root: AggregateActiviyOrAction = new AggregateActiviyOrAction('NSN', 0, []) // not real, name does not matter
 
-    sessions.slice(0, amount).forEach(session => {
+    sessions.slice(from, from+amount).forEach(session => {
         let currentNode: AggregateActiviyOrAction = root
         session.eventTimeline.forEach(event => {
             // place this event in this level and move to next level
@@ -235,7 +235,7 @@ const fakeDiagram = (): Diagram => {
     return diagram
 }
 
-const renderDiagram = (diagram: Diagram) => {
+const renderTextDiagram = (diagram: Diagram) => {
     let yorigin = 500
     const imageWidth = 3800, imageHeight = 2500
     let html = `<svg width="${imageWidth}" height="${imageHeight}">`
@@ -277,7 +277,7 @@ const renderDiagram = (diagram: Diagram) => {
                 const y = 120 * nodeIx + 120
                 html += `<text onClick="drill('${node.name}')" x="${x}" y="${y}" fill="black">${node.name}</text>\n`
                 html += `<text x="${x}" y="${y + 20}" fill="black">${node.count}</text>\n`
-                let dy = -9*node.next.size/2
+                let dy = -9 * node.next.size / 2
                 node.next.forEach((value, key) => {
                     html += `<text x="${x + 40}" y="${y + dy}" fill="red" font-size="x-small">${key}</text>\n`
                     html += `<text x="${x + 90}" y="${y + dy}" fill="red" font-size="x-small">${value}</text>\n`
@@ -297,6 +297,91 @@ const renderDiagram = (diagram: Diagram) => {
     return html
 }
 
+const renderDiagram = (diagram: Diagram) => {
+    let yorigin = 500
+    const xspace = 300
+    const imageWidth = 3800, imageHeight = 2500
+    let html = `<svg width="${imageWidth}" height="${imageHeight}">`
+    html += `
+    <defs>
+    <linearGradient id="greenfade" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:rgb(227, 245, 206);stop-opacity:1" />
+      <stop offset="100%" style="stop-color:rgb(129, 182, 80);stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="redfade" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" style="stop-color:rgb(226, 59, 30);stop-opacity:1" />
+        <stop offset="100%" style="stop-color:rgb(241, 152, 146);stop-opacity:0" />
+      </linearGradient>
+    </defs>
+    `
+
+    let positions: { x: number, y: number, height: number, name: string, count: number }[][] = []
+
+    const firstStageSessionCount = diagram.stages[0].nodes.reduce((p, c) => p + c.count, 0)
+    const heightFactor = 400 / firstStageSessionCount // so total height of boxes is 400 pts
+    // before we start rendering we need to compute position of each node to draw the connections
+    diagram.stages.forEach((stage, stageIx) => {
+        const x = 40 + xspace * stageIx
+        let y = 120 // spacing is based on box size which is proportional to count
+        positions.push([])
+        stage.nodes.forEach((node, nodeIx) => {
+            const height = node.count * heightFactor
+            positions[stageIx][nodeIx] = { x: x, y: y, height: height, name: node.name, count: node.count }
+            y += height + 60
+        })
+    })
+
+    positions.forEach(col => {
+        col.forEach(cell => {
+            if (cell.count) {
+                html += `<rect rx="4" ry="4" x="${cell.x}" y="${cell.y}" width="180" height="${cell.height}" fill='url(#greenfade)'></rect>`
+                const y = cell.height<40?cell.y+cell.height+15:cell.y+20
+                html += `<text onClick="drill('${cell.name}')" x="${cell.x + 10}" y="${y}" fill="black">${cell.name}</text>\n`
+                html += `<text x="${cell.x + 10}" y="${y+17}" fill="black">${cell.count}</text>\n`
+            }
+            // console.log('rect', cell)
+        })
+    })
+
+    diagram.stages.forEach((stage, stageIx) => {
+        const x = 40 + xspace * stageIx
+
+        // the top level stats
+        const sessions = stage.nodes.reduce((p, c) => p += c.count, 0)
+        let linkCount = 0
+        stage.nodes.forEach(node => {
+            node.next.forEach(link => {
+                linkCount += link
+            })
+        })
+        const dropOuts = sessions - linkCount
+        html += `<text x="${x}" y="${20}" fill="black">${sessions} sessions</text>\n`
+        html += `<text x="${x}" y="${40}" fill="black">${dropOuts} drop-outs</text>\n`
+
+        // stage.nodes.forEach((node, nodeIx) => {
+        //     if (node.count > 0) {
+        //         const y = 120 * nodeIx + 120
+        //         html += `<text onClick="drill('${node.name}')" x="${x}" y="${y}" fill="black">${node.name}</text>\n`
+        //         html += `<text x="${x}" y="${y + 20}" fill="black">${node.count}</text>\n`
+        //         let dy = -9*node.next.size/2
+        //         node.next.forEach((value, key) => {
+        //             html += `<text x="${x + 40}" y="${y + dy}" fill="red" font-size="x-small">${key}</text>\n`
+        //             html += `<text x="${x + 90}" y="${y + dy}" fill="red" font-size="x-small">${value}</text>\n`
+        //             // draw connection
+        //             if (stageIx < diagram.stages.length - 1) {
+        //                 const nextNodeIx = diagram.stages[stageIx + 1].nodes.findIndex(node => node.name == key)
+        //                 const next = positions[stageIx + 1][nextNodeIx]
+        //                 const width = 1 + value / 100
+        //                 html += `<line x1="${x + 120}" y1="${y + dy}" x2="${(next.x - 5)}" y2="${next.y}" style="stroke:lightgray;stroke-width:${width}" />`
+        //             }
+        //             dy += 9
+        //         })
+        //     }
+        // })
+    })
+    html += '</svg>'
+    return html
+}
 
 
 
@@ -327,9 +412,11 @@ const server = http.createServer((req, res) => {
         const amountTxt = req.url.split("/")[3]
         const amount = Number.parseInt(amountTxt)
         console.log("chart", style, amount)
-        if (style=='flow') {
+        const from = amount==1?Math.round(Math.random()*sessions.length):0 //if just one, pick random
+        console.log("session slice", from, amount)
+        if (style == 'flow') {
             // const sessions = randomData(1000)
-            const data = reduceSessions(sessions, amount)
+            const data = reduceSessions(sessions, from, amount)
             // const html = renderHTML(data)
             // const html = renderDiagram(fakeDiagram())
             const html = renderDiagram(createDiagram(data))
@@ -338,12 +425,12 @@ const server = http.createServer((req, res) => {
         }
         else {
             let html = "<div>Raw Data</div><table>"
-            sessions.slice(0,amount).forEach((session,ix) => {
+            sessions.slice(from, from+amount).forEach((session, ix) => {
                 html += `<tr>`
                 html += `<td>${ix}. </td>`
                 session.eventTimeline.forEach(event => {
                     html += `<td>`
-                    html += `${event.name} -->` 
+                    html += `${event.name} -->`
                     html += `</td>`
                 })
                 html += `</tr>`
