@@ -3,8 +3,9 @@
 <meta name="color-scheme" content="dark light">
 
 <script type="text/javascript">
-    
-let loadChart = (sample) => {
+var sampleSize=500
+var chartStyle='flow'
+let loadChart = () => {
     var xhttp = new XMLHttpRequest();
     xhttp.onreadystatechange = function() {
         if (this.readyState == 4 && this.status == 200) {
@@ -14,11 +15,14 @@ let loadChart = (sample) => {
             document.getElementById("chart").innerHTML = html
         }
     };
-    xhttp.open("GET", "/chart/"+sample, true);
+    xhttp.open("GET", `/chart/${chartStyle}/${sampleSize}`, true);
     xhttp.send();
 }
 let onLoad = () => {
     loadChart(5000)
+}
+let drill = (param) => {
+    console.log("drill down", param)
 }
 </script>
 <head>
@@ -32,19 +36,26 @@ let onLoad = () => {
             background-color: rgb(184, 184, 203);
             color: rgb(15, 9, 88);
         }
+        td {
+            word-wrap: none;
+            text-align: left;
+        }
     </style>
 </head>
 <body onLoad="onLoad()">
     <div id="buttonBar">
-        <button class="button" onclick="loadChart(1)">Juat one</button>
-        <button class="button" onclick="loadChart(10)">10</button>
-        <button class="button" onclick="loadChart(100)">100</button>
-        <button class="button" onclick="loadChart(1000)">1000</button>
-        <button class="button" onclick="loadChart(10000)">10,000</button>
-        <button class="button" onclick="loadChart(100000)">100,000</button>
+        <button class="button" onclick="sampleSize=10;loadChart()">Just one</button>
+        <button class="button" onclick="sampleSize=10;loadChart()">10</button>
+        <button class="button" onclick="sampleSize=100;loadChart()">100</button>
+        <button class="button" onclick="sampleSize=1000;loadChart()">1000</button>
+        <button class="button" onclick="sampleSize=10000;loadChart()">10,000</button>
+        <button class="button" onclick="sampleSize=100000;loadChart()">100,000</button>
+        <button class="button" onclick="chartStyle='raw';loadChart()">Raw</button>
+        <button class="button" onclick="chartStyle='flow';loadChart()">Flow</button>
     </div>
     <br>
-    <div id="chart" style=" height:900px; width:1200ox; border:2px solid rgb(52, 26, 26)">
+    <!-- <div id="chart" style=" height:900px; width:1200ox; border:2px solid rgb(52, 26, 26)"> -->
+        <div id="chart"">
 
     </div> 
 </body>

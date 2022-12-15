@@ -85,7 +85,7 @@ const randomData = (quantity: number): Session[] => {
     return result
 
 }
-const loadData = ():Session[] => {
+const loadData = (): Session[] => {
     const data = fs.readFileSync("final_output.json")
     const sessions = JSON.parse(String(data))
     console.log(`Loaded ${sessions.length} sessions`)
@@ -97,10 +97,10 @@ const loadData = ():Session[] => {
         })
         return session
     })
-    const temp =  mappedSessions//.slice(0,10000)
+    const temp = mappedSessions//.slice(0,10000)
     return temp
 }
-const reduceSessions = (sessions: Session[], amount:number): AggregateActiviyOrAction[] => {
+const reduceSessions = (sessions: Session[], amount: number): AggregateActiviyOrAction[] => {
     let root: AggregateActiviyOrAction = new AggregateActiviyOrAction('NSN', 0, []) // not real, name does not matter
 
     sessions.slice(0, amount).forEach(session => {
@@ -147,7 +147,7 @@ const renderActivity = (activity: AggregateActiviyOrAction, level: number): stri
 
 class SankeyNode {
     public name: string = ""
-    public count:number=0
+    public count: number = 0
     public next: Map<string, number> = new Map()
 }
 class Stage {
@@ -157,55 +157,55 @@ class Diagram {
     public stages: Stage[] = []
 }
 
-const createDiagram = (roots:AggregateActiviyOrAction[]): Diagram => {
+const createDiagram = (roots: AggregateActiviyOrAction[]): Diagram => {
 
     let diagram = new Diagram()
 
     // find number of stages and set of activities
-    let maxDepth=0
+    let maxDepth = 0
     let activities = new Set<string>()
-    const walk = (node:AggregateActiviyOrAction, depth:number) => {
+    const walk = (node: AggregateActiviyOrAction, depth: number) => {
         maxDepth = Math.max(maxDepth, depth)
         activities.add(node.interaction)
         node.next.forEach(child => {
-            walk(child, depth+1)
+            walk(child, depth + 1)
         })
     }
     roots.forEach(element => {
-        walk(element,0)
+        walk(element, 0)
     })
 
     console.log(`Found ${activities.size} activities in ${maxDepth} stages`)
 
-    for ( let stage = 0; stage<=maxDepth; stage++) {
+    for (let stage = 0; stage <= maxDepth; stage++) {
         let stage = new Stage()
         diagram.stages.push(stage)
         activities.forEach(activity => {
             let node = new SankeyNode()
             stage.nodes.push(node)
-            node.count=0
+            node.count = 0
             node.name = activity
         })
     }
 
-    const walkAggregate = (activity:AggregateActiviyOrAction, depth:number) => {
+    const walkAggregate = (activity: AggregateActiviyOrAction, depth: number) => {
         const nodeIx = diagram.stages[depth].nodes.findIndex(node => node.name == activity.interaction)
         const node = diagram.stages[depth].nodes[nodeIx]
         node.count += activity.count
-        
+
         activity.next.forEach(childActivity => {
             const previousCount = node.next.get(childActivity.interaction)
-            const newCount = (previousCount||0)+childActivity.count
+            const newCount = (previousCount || 0) + childActivity.count
             node.next.set(childActivity.interaction, newCount)
 
-            walkAggregate(childActivity, depth+1)
+            walkAggregate(childActivity, depth + 1)
         })
     }
     roots.forEach(root => {
-        walkAggregate(root,0)
+        walkAggregate(root, 0)
     })
-    for ( let stage = 0; stage<diagram.stages.length; stage++) {
-        diagram.stages[stage].nodes = diagram.stages[stage].nodes.sort((a,b)=> b.count-a.count)
+    for (let stage = 0; stage < diagram.stages.length; stage++) {
+        diagram.stages[stage].nodes = diagram.stages[stage].nodes.sort((a, b) => b.count - a.count)
     }
     return diagram
 }
@@ -221,7 +221,7 @@ const fakeDiagram = (): Diagram => {
         activities.forEach(activity => {
             const node = new SankeyNode()
             node.name = activity
-            node.count = Math.round(Math.random()*10000)
+            node.count = Math.round(Math.random() * 10000)
             activities.forEach(child => {
                 if (child != node.name && Math.random() > .7) {
                     node.next.set(child, Math.round(Math.random() * 1000))
@@ -229,7 +229,7 @@ const fakeDiagram = (): Diagram => {
             })
             stage.nodes.push(node)
         })
-        stage.nodes = stage.nodes.sort((a,b) => a.count-b.count)
+        stage.nodes = stage.nodes.sort((a, b) => a.count - b.count)
         diagram.stages.push(stage)
     })
     return diagram
@@ -240,28 +240,28 @@ const renderDiagram = (diagram: Diagram) => {
     const imageWidth = 3800, imageHeight = 2500
     let html = `<svg width="${imageWidth}" height="${imageHeight}">`
 
-    let positions:{x:number, y:number}[][] = []
+    let positions: { x: number, y: number }[][] = []
 
     // before we start rendering we need to compute position of each node to draw the connections
     diagram.stages.forEach((stage, stageIx) => {
-        const x = 40+ 260 * stageIx
+        const x = 40 + 260 * stageIx
         positions.push([])
         stage.nodes.forEach((node, nodeIx) => {
             const y = 120 * nodeIx + 120
-            positions[stageIx][nodeIx] = {x:x, y:y}
+            positions[stageIx][nodeIx] = { x: x, y: y }
         })
     })
 
-    positions.forEach(col =>  {
-        col.forEach(cell => {
-            html += `<rect x="${cell.x-5}" y="${cell.y}" width="5" height="5" fill="blue"></rect>`
-        })
-    })
+    // positions.forEach(col => {
+    //     col.forEach(cell => {
+    //         html += `<rect x="${cell.x - 5}" y="${cell.y}" width="5" height="5" fill="blue"></rect>`
+    //     })
+    // })
     diagram.stages.forEach((stage, stageIx) => {
-        const x = 40+ 260 * stageIx
+        const x = 40 + 260 * stageIx
 
         // the top level stats
-        const sessions = stage.nodes.reduce((p,c) => p += c.count,0)
+        const sessions = stage.nodes.reduce((p, c) => p += c.count, 0)
         let linkCount = 0
         stage.nodes.forEach(node => {
             node.next.forEach(link => {
@@ -273,22 +273,24 @@ const renderDiagram = (diagram: Diagram) => {
         html += `<text x="${x}" y="${40}" fill="black">${dropOuts} drop-outs</text>\n`
 
         stage.nodes.forEach((node, nodeIx) => {
-            const y = 120 * nodeIx + 120
-            html += `<text x="${x}" y="${y}" fill="black">${node.name}</text>\n`
-            html += `<text x="${x}" y="${y+20}" fill="black">${node.count}</text>\n`
-            let dy=-10
-            node.next.forEach((value, key) => {
-                html += `<text x="${x+40}" y="${y+dy}" fill="red">${key}</text>\n`
-                html += `<text x="${x+90}" y="${y+dy}" fill="red">${value}</text>\n`
-                // draw connection
-                if (stageIx<diagram.stages.length-1) {
-                    const nextNodeIx = diagram.stages[stageIx+1].nodes.findIndex(node => node.name==key)
-                    const next = positions[stageIx+1][nextNodeIx]
-                    const width = 1 + value/100
-                    html += `<line x1="${x+120}" y1="${y+dy}" x2="${ (next.x - 5 )}" y2="${next.y}" style="stroke:lightgray;stroke-width:${width}" />`
-                }
-                dy +=18
-            })
+            if (node.count > 0) {
+                const y = 120 * nodeIx + 120
+                html += `<text onClick="drill('${node.name}')" x="${x}" y="${y}" fill="black">${node.name}</text>\n`
+                html += `<text x="${x}" y="${y + 20}" fill="black">${node.count}</text>\n`
+                let dy = -9*node.next.size/2
+                node.next.forEach((value, key) => {
+                    html += `<text x="${x + 40}" y="${y + dy}" fill="red" font-size="x-small">${key}</text>\n`
+                    html += `<text x="${x + 90}" y="${y + dy}" fill="red" font-size="x-small">${value}</text>\n`
+                    // draw connection
+                    if (stageIx < diagram.stages.length - 1) {
+                        const nextNodeIx = diagram.stages[stageIx + 1].nodes.findIndex(node => node.name == key)
+                        const next = positions[stageIx + 1][nextNodeIx]
+                        const width = 1 + value / 100
+                        html += `<line x1="${x + 120}" y1="${y + dy}" x2="${(next.x - 5)}" y2="${next.y}" style="stroke:lightgray;stroke-width:${width}" />`
+                    }
+                    dy += 9
+                })
+            }
         })
     })
     html += '</svg>'
@@ -319,17 +321,38 @@ const server = http.createServer((req, res) => {
         res.setHeader("Content-Type", "text/html")
         res.end(html)
 
-    } 
+    }
     else if (req.url?.startsWith("/chart/")) {
-        const param = req.url.split("/")[2]
-        const amount = Number.parseInt(param)
-        // const sessions = randomData(1000)
-        const data = reduceSessions(sessions, amount)
-        // const html = renderHTML(data)
-        // const html = renderDiagram(fakeDiagram())
-        const html = renderDiagram(createDiagram(data))
-        res.setHeader("Content-Type", "text/html")
-        res.end(html)
+        const style = req.url.split("/")[2]
+        const amountTxt = req.url.split("/")[3]
+        const amount = Number.parseInt(amountTxt)
+        console.log("chart", style, amount)
+        if (style=='flow') {
+            // const sessions = randomData(1000)
+            const data = reduceSessions(sessions, amount)
+            // const html = renderHTML(data)
+            // const html = renderDiagram(fakeDiagram())
+            const html = renderDiagram(createDiagram(data))
+            res.setHeader("Content-Type", "text/html")
+            res.end(html)
+        }
+        else {
+            let html = "<div>Raw Data</div><table>"
+            sessions.slice(0,amount).forEach((session,ix) => {
+                html += `<tr>`
+                html += `<td>${ix}. </td>`
+                session.eventTimeline.forEach(event => {
+                    html += `<td>`
+                    html += `${event.name} -->` 
+                    html += `</td>`
+                })
+                html += `</tr>`
+
+            })
+            html += "</table></div>"
+            res.setHeader("Content-Type", "text/html")
+            res.end(html)
+        }
 
     } else {
         console.log(`unexpected url ${req.url}`)

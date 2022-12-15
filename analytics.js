@@ -235,11 +235,11 @@ const renderDiagram = (diagram) => {
             positions[stageIx][nodeIx] = { x: x, y: y };
         });
     });
-    positions.forEach(col => {
-        col.forEach(cell => {
-            html += `<rect x="${cell.x - 5}" y="${cell.y}" width="5" height="5" fill="blue"></rect>`;
-        });
-    });
+    // positions.forEach(col => {
+    //     col.forEach(cell => {
+    //         html += `<rect x="${cell.x - 5}" y="${cell.y}" width="5" height="5" fill="blue"></rect>`
+    //     })
+    // })
     diagram.stages.forEach((stage, stageIx) => {
         const x = 40 + 260 * stageIx;
         // the top level stats
@@ -254,22 +254,24 @@ const renderDiagram = (diagram) => {
         html += `<text x="${x}" y="${20}" fill="black">${sessions} sessions</text>\n`;
         html += `<text x="${x}" y="${40}" fill="black">${dropOuts} drop-outs</text>\n`;
         stage.nodes.forEach((node, nodeIx) => {
-            const y = 120 * nodeIx + 120;
-            html += `<text x="${x}" y="${y}" fill="black">${node.name}</text>\n`;
-            html += `<text x="${x}" y="${y + 20}" fill="black">${node.count}</text>\n`;
-            let dy = -10;
-            node.next.forEach((value, key) => {
-                html += `<text x="${x + 40}" y="${y + dy}" fill="red">${key}</text>\n`;
-                html += `<text x="${x + 90}" y="${y + dy}" fill="red">${value}</text>\n`;
-                // draw connection
-                if (stageIx < diagram.stages.length - 1) {
-                    const nextNodeIx = diagram.stages[stageIx + 1].nodes.findIndex(node => node.name == key);
-                    const next = positions[stageIx + 1][nextNodeIx];
-                    const width = 1 + value / 100;
-                    html += `<line x1="${x + 120}" y1="${y + dy}" x2="${(next.x - 5)}" y2="${next.y}" style="stroke:lightgray;stroke-width:${width}" />`;
-                }
-                dy += 18;
-            });
+            if (node.count > 0) {
+                const y = 120 * nodeIx + 120;
+                html += `<text onClick="drill('${node.name}')" x="${x}" y="${y}" fill="black">${node.name}</text>\n`;
+                html += `<text x="${x}" y="${y + 20}" fill="black">${node.count}</text>\n`;
+                let dy = -9 * node.next.size / 2;
+                node.next.forEach((value, key) => {
+                    html += `<text x="${x + 40}" y="${y + dy}" fill="red" font-size="x-small">${key}</text>\n`;
+                    html += `<text x="${x + 90}" y="${y + dy}" fill="red" font-size="x-small">${value}</text>\n`;
+                    // draw connection
+                    if (stageIx < diagram.stages.length - 1) {
+                        const nextNodeIx = diagram.stages[stageIx + 1].nodes.findIndex(node => node.name == key);
+                        const next = positions[stageIx + 1][nextNodeIx];
+                        const width = 1 + value / 100;
+                        html += `<line x1="${x + 120}" y1="${y + dy}" x2="${(next.x - 5)}" y2="${next.y}" style="stroke:lightgray;stroke-width:${width}" />`;
+                    }
+                    dy += 9;
+                });
+            }
         });
     });
     html += '</svg>';
@@ -295,15 +297,35 @@ const server = node_http_1.default.createServer((req, res) => {
         res.end(html);
     }
     else if ((_b = req.url) === null || _b === void 0 ? void 0 : _b.startsWith("/chart/")) {
-        const param = req.url.split("/")[2];
-        const amount = Number.parseInt(param);
-        // const sessions = randomData(1000)
-        const data = reduceSessions(sessions, amount);
-        // const html = renderHTML(data)
-        // const html = renderDiagram(fakeDiagram())
-        const html = renderDiagram(createDiagram(data));
-        res.setHeader("Content-Type", "text/html");
-        res.end(html);
+        const style = req.url.split("/")[2];
+        const amountTxt = req.url.split("/")[3];
+        const amount = Number.parseInt(amountTxt);
+        console.log("chart", style, amount);
+        if (style == 'flow') {
+            // const sessions = randomData(1000)
+            const data = reduceSessions(sessions, amount);
+            // const html = renderHTML(data)
+            // const html = renderDiagram(fakeDiagram())
+            const html = renderDiagram(createDiagram(data));
+            res.setHeader("Content-Type", "text/html");
+            res.end(html);
+        }
+        else {
+            let html = "<div>Raw Data</div><table>";
+            sessions.slice(0, amount).forEach((session, ix) => {
+                html += `<tr>`;
+                html += `<td>${ix}. </td>`;
+                session.eventTimeline.forEach(event => {
+                    html += `<td>`;
+                    html += `${event.name} -->`;
+                    html += `</td>`;
+                });
+                html += `</tr>`;
+            });
+            html += "</table></div>";
+            res.setHeader("Content-Type", "text/html");
+            res.end(html);
+        }
     }
     else {
         console.log(`unexpected url ${req.url}`);
